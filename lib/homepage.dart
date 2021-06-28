@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import 'find_page.dart';
+import 'log_page.dart';
 
 /// Class  : HomePage
 /// Author : Devin Arena
@@ -21,7 +22,7 @@ class HomePage extends StatefulWidget {
 /// Purpose: Contains state information for the homepage.
 class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
-  TabController? _controller;
+  late TabController _controller;
 
   // A list of every tab.
   final List<Tab> tabs = <Tab>[
@@ -40,19 +41,21 @@ class _HomePageState extends State<HomePage>
   @override
   void dispose() {
     super.dispose();
-    _controller!.dispose();
+    _controller.dispose();
   }
 
   /// Creates the home page widget.
   ///
   /// @param context current BuildContext
+  /// @return the homepage widget
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: tabs.length,
       child: Scaffold(
         appBar: AppBar(
-          title: AutoSizeText("Purchase Log", style: TextStyle(fontSize: 28)),
+          title: AutoSizeText("Purchase Log",
+              maxLines: 1, style: TextStyle(fontSize: 28)),
           centerTitle: true,
           bottom: TabBar(
             controller: _controller,
@@ -62,7 +65,7 @@ class _HomePageState extends State<HomePage>
         ),
         body: TabBarView(
           controller: _controller,
-          children: [FindPage(), Center(child: Text("Log Tab"))],
+          children: [FindPage(), LogPage()],
         ),
       ),
     );

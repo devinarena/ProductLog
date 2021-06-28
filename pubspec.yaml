@@ -1,5 +1,5 @@
 name: purchase_log
-description: A new Flutter project.
+description: An application to log and view your purchases.
 
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 
@@ -15,6 +15,12 @@ dependencies:
   cupertino_icons: ^1.0.2
   auto_size_text: ^3.0.0-nullsafety.0
   sqflite: ^2.0.0+3
+  path_provider: ^2.0.2
+  intl: ^0.17.0
+  flutter_barcode_scanner: ^2.0.0
+  camera: ^0.8.1+3
+  barcode: ^2.1.0
+  barcode_widget: ^2.0.1
 
 dev_dependencies:
   flutter_test:
