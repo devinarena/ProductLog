@@ -7,7 +7,7 @@ Users can store product information to be recalled at any time. Users can scan b
 
 # Getting Started
 
-This application is not yet on the Google Play store or iOS app store, though I plan to release it soon. It will stay open source even when it is published.
+This application is not yet on the Google Play store or iOS app store, though I plan to release it soon. It will stay open source even when it is published. You can compile the code yourself using flutter/Android Studio, or a debug APK is located in the build folder.
 
 # Images
 
