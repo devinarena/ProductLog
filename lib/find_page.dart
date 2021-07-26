@@ -8,6 +8,7 @@ import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
 import 'package:purchase_log/edit_product.dart';
 import 'package:purchase_log/product_page.dart';
 import 'package:purchase_log/products.dart';
+import 'package:purchase_log/themes.dart';
 
 import 'product.dart';
 
@@ -17,7 +18,11 @@ import 'product.dart';
 /// Purpose: Find page, allows you to scan/enter UPCs and
 ///          view products or add new ones.
 class FindPage extends StatefulWidget {
-  FindPage({Key? key}) : super(key: key);
+  final Function() updateHomepage;
+  final Function() updateLogPage;
+  FindPage(
+      {Key? key, required this.updateHomepage, required this.updateLogPage})
+      : super(key: key);
 
   _FindPageState createState() => _FindPageState();
 }
@@ -48,6 +53,7 @@ class _FindPageState extends State<FindPage>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return SingleChildScrollView(
       physics: ClampingScrollPhysics(),
       child: Column(
@@ -60,7 +66,7 @@ class _FindPageState extends State<FindPage>
             height: MediaQuery.of(context).size.height - 168,
             margin: EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             decoration: BoxDecoration(
-                color: Colors.grey[700],
+                color: Themes.containerColor(),
                 borderRadius: BorderRadius.circular(20)),
             child: Container(
               margin: EdgeInsets.all(20),
@@ -135,8 +141,8 @@ class _FindPageState extends State<FindPage>
                 minimumSize: MaterialStateProperty.all<Size>(Size(225, 0)),
                 padding: MaterialStateProperty.all<EdgeInsets>(
                     EdgeInsets.all(10.0))),
-            onPressed: () {
-              tryLookup();
+            onPressed: () async {
+              await tryLookup();
             },
           )
         ],
@@ -175,16 +181,18 @@ class _FindPageState extends State<FindPage>
   /// First ensures a proper UPC has been entered, if its <12 numbers
   /// a prompt asks if the user would like to correct this, before
   /// finally attempting to find a product from the entered UPC.
-  void tryLookup() {
+  Future<void> tryLookup() async {
     // if a invalid UPC is entered, do nothing yet
     if (!_formKey.currentState!.validate()) return;
     // attempt to find the target
-    if (!findProduct()) {
-      if (_upcController!.text.length < 12)
-        showUPCShortDialog();
-      else
-        showCreateDialog();
-    }
+    await findProduct().then((value) {
+      if (!value) {
+        if (_upcController!.text.length < 12)
+          showUPCShortDialog();
+        else
+          showCreateDialog();
+      }
+    });
   }
 
   /// Looks up and returns a product if found.
@@ -192,15 +200,19 @@ class _FindPageState extends State<FindPage>
   ///
   /// @param context BuildContext the current context to push to
   /// @return bool if the product was found or not
-  bool findProduct() {
+  Future<bool> findProduct() async {
     Product? target = Products.lookup(int.parse(_upcController!.text));
     // if a product doesn't exist, ask to create
     if (target == null) {
       return false;
     }
+    widget.updateHomepage();
     // otherwise, show the product page to the user
-    Navigator.push(
-        context, MaterialPageRoute(builder: (builder) => ProductPage(target)));
+    await Navigator.of(context)
+        .push(MaterialPageRoute(builder: (builder) => ProductPage(target)))
+        .then((_) {
+      widget.updateLogPage();
+    });
     return true;
   }
 

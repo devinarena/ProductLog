@@ -3,8 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:purchase_log/product_page.dart';
 import 'package:purchase_log/products.dart';
+import 'package:purchase_log/settings.dart';
+import 'package:purchase_log/themes.dart';
 
 import 'product.dart';
+
+final GlobalKey<LogPageState> globalLogPageStateKey = GlobalKey();
 
 /// Class  : LogPage
 /// Author : Devin Arena
@@ -12,38 +16,49 @@ import 'product.dart';
 /// Purpose: Find page, allows you to scan/enter UPCs and
 ///          view products or add new ones.
 class LogPage extends StatefulWidget {
-  LogPage({Key? key}) : super(key: key);
+  LogPage() : super(key: globalLogPageStateKey);
 
-  _LogPageState createState() => _LogPageState();
+  LogPageState createState() => LogPageState();
 }
 
 /// Class  : LogPageState
 /// Author : Devin Arena
 /// Date   : 6/24/2021
 /// Purpose: Contains the widget and state info for FindPage.
-class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
+class LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
   // use French locale number formatting for the group seperator to be a space
   final format = new NumberFormat("0,00000,00000,0", "fr-FR");
 
   final _searchKey = GlobalKey<FormState>();
 
+  late List<Product> products;
+
   late TextEditingController _searchController;
+
+  late String _sorting;
 
   @override
   void initState() {
     super.initState();
+    Settings.themes.addListener(() {
+      setState(() {});
+    });
     _searchController = new TextEditingController();
+    _sorting = Settings.defaultSort;
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+    products = List.from(Products.products);
+    _sortItems();
     return SingleChildScrollView(
       physics: ClampingScrollPhysics(),
       child: Column(
-          mainAxisSize: MainAxisSize.max,
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: buildPage()),
+          children: _buildPage()),
     );
   }
 
@@ -51,7 +66,7 @@ class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
   /// children widgets for the log page main container.
   ///
   /// @return List<Widget> page containing inputs and buttons
-  List<Widget> buildPage() {
+  List<Widget> _buildPage() {
     List<Widget> children = [];
     children.add(
       Padding(
@@ -85,9 +100,7 @@ class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: 40),
                   child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {});
-                    },
+                    onPressed: _search,
                     style: ButtonStyle(
                       padding: MaterialStateProperty.all<EdgeInsets>(
                           EdgeInsets.all(0)),
@@ -101,9 +114,7 @@ class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: 40),
                   child: ElevatedButton(
-                    onPressed: () {
-                      setState(() {});
-                    },
+                    onPressed: _showSortMenu,
                     style: ButtonStyle(
                       padding: MaterialStateProperty.all<EdgeInsets>(
                           EdgeInsets.all(0)),
@@ -117,13 +128,17 @@ class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
         ),
       ),
     );
-    for (int i = 0; i < Products.products.length; i++) {
-      Product p = Products.products[i];
+    for (int i = 0; i < products.length; i++) {
+      Product p = products[i];
       if (_searchController.text.isNotEmpty &&
-          !p.name.contains(_searchController.text) &&
-          !p.tags.contains(_searchController.text)) continue;
-      children.add(productWidget(p));
-      if (i < Products.products.length - 1)
+          !p.name
+              .toLowerCase()
+              .contains(_searchController.text.toLowerCase()) &&
+          !p.tags.contains(_searchController.text) &&
+          !p.id.toString().padLeft(12, '0').contains(_searchController.text))
+        continue;
+      children.add(_productWidget(p));
+      if (i < products.length - 1)
         children.add(Divider(
           height: 10,
           thickness: 2,
@@ -134,19 +149,28 @@ class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
     return children;
   }
 
+  void rebuild() {
+    setState(() {
+      _search();
+    });
+  }
+
   /// Generates a product tile for each product for the
   /// main screen that allows you to view it.
   ///
   /// @return Widget a tile containing some product information
-  Widget productWidget(Product product) {
+  Widget _productWidget(Product product) {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      padding: EdgeInsets.all(10),
+      padding: EdgeInsets.all(8),
       constraints: BoxConstraints(
         minHeight: 90,
       ),
       decoration: BoxDecoration(
-        color: Colors.grey[700],
+        color: Themes.containerColor(),
+        border: product.favorite
+            ? Border.all(width: 3, color: Color.fromRGBO(192, 0, 0, 1))
+            : null,
         borderRadius: BorderRadius.circular(10),
       ),
       child: Flex(
@@ -157,53 +181,67 @@ class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
         children: [
           Flexible(
             flex: 2,
-            fit: FlexFit.loose,
+            fit: FlexFit.tight,
             child: Column(
               mainAxisSize: MainAxisSize.max,
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                AutoSizeText(
-                  format.format(product.id),
-                  maxLines: 1,
-                  style: TextStyle(fontSize: 14),
-                ),
+              children: <Widget>[
+                product.hideUPC || Settings.collectionMode
+                    ? SizedBox()
+                    : AutoSizeText(format.format(product.id),
+                        maxLines: 1, style: TextStyle(fontSize: 14)),
+                if (product.manufacturer.isNotEmpty)
+                  Center(
+                    child: AutoSizeText(
+                      "${product.manufacturer}",
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 Center(
                   child: AutoSizeText(
                     "${product.name}",
-                    maxLines: 3,
+                    maxLines: 2,
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
             ),
           ),
-          Flexible(
-            child: Text(
-              "${product.description}",
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12),
-            ),
-            flex: 2,
-            fit: FlexFit.loose,
-          ),
-          Flexible(
-            child: RichText(
-              text: TextSpan(
-                text: "${product.rating}",
-                style: TextStyle(fontSize: 20, color: Colors.yellow[500]),
-                children: [
-                  WidgetSpan(
-                      child: Icon(Icons.star,
-                          size: 24, color: Colors.yellow[300])),
-                ],
-              ),
-            ),
-            flex: 2,
-            fit: FlexFit.loose,
-          ),
+          product.description.isNotEmpty
+              ? Flexible(
+                  child: AutoSizeText(
+                    "${product.description}",
+                    maxLines: 3,
+                    minFontSize: 12,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  flex: 2,
+                  fit: FlexFit.tight,
+                )
+              : Spacer(flex: 2),
+          product.rating > 0
+              ? Flexible(
+                  child: RichText(
+                    text: TextSpan(
+                      text: "${product.rating}",
+                      style: TextStyle(fontSize: 20, color: Themes.yellow()),
+                      children: [
+                        WidgetSpan(
+                            child: Icon(Icons.star,
+                                size: 24, color: Themes.yellow())),
+                      ],
+                    ),
+                  ),
+                  flex: 1,
+                  fit: FlexFit.tight,
+                )
+              : Spacer(flex: 1),
           Flexible(
             child: ConstrainedBox(
               constraints: BoxConstraints(maxWidth: 40),
@@ -212,9 +250,13 @@ class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
                     padding: MaterialStateProperty.all<EdgeInsets>(
                         EdgeInsets.all(0))),
                 child: Center(child: Icon(Icons.arrow_right)),
-                onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (builder) => ProductPage(product)));
+                onPressed: () async {
+                  await Navigator.of(context)
+                      .push(MaterialPageRoute(
+                          builder: (builder) => ProductPage(product)))
+                      .then((_) {
+                    setState(() {});
+                  });
                 },
               ),
             ),
@@ -227,8 +269,71 @@ class _LogPageState extends State<LogPage> with AutomaticKeepAliveClientMixin {
   }
 
   /// Rebuilds the page to show only widgets that match the
-  /// search criteria, either by name or TODO: tag.
-  void search() {}
+  /// search criteria, either by name or tag.
+  void _search() {
+    setState(() {});
+  }
+
+  /// Displays a menu to the user containing sort options,
+  /// when one is selected, the page rebuilds using the specified
+  /// sorting selection.
+  _showSortMenu() async {
+    ElevatedButton okButton = ElevatedButton(
+        child: Text("Okay"),
+        onPressed: () {
+          Navigator.of(context).pop();
+          setState(() {});
+        });
+
+    AlertDialog dialog = AlertDialog(
+      title: Text("Sort By"),
+      content: StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: Products.sortingMethods
+              .map((e) => RadioListTile<String>(
+                  value: e,
+                  groupValue: _sorting,
+                  title: Text(
+                    e,
+                    maxLines: 1,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  onChanged: (value) {
+                    setState(() => _sorting = value!);
+                  }))
+              .toList(),
+        );
+      }),
+      scrollable: true,
+      actions: [okButton],
+    );
+
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return dialog;
+        });
+  }
+
+  /// Sorts the list of products based on the user's desired sort
+  /// attribute. Called before the page is built.
+  void _sortItems() {
+    if (_sorting == "Added") // this is the default order, do nothing
+      return;
+    if (_sorting == "Name") {
+      products.sort((a, b) => a.name.compareTo(b.name));
+    }
+    if (_sorting == "ID") {
+      products.sort((a, b) => a.id - b.id);
+    }
+    if (_sorting == "Rating") {
+      products.sort((a, b) => (b.rating - a.rating).toInt());
+    }
+  }
 
   // Keep this state alive when it isn't the focused tab
   @override

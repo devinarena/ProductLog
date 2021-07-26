@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:purchase_log/homepage.dart';
 import 'package:purchase_log/products.dart';
+import 'package:purchase_log/settings.dart';
+import 'package:purchase_log/themes.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  await Settings.loadSettings();
+
   int loaded = await Products.loadProducts();
   print("Successfully loaded $loaded products.");
 
@@ -16,7 +21,22 @@ Future<void> main() async {
 /// Author : Devin Arena
 /// Date   : 6/7/2021
 /// Purpose: Root class of the application, contains the root widget.
-class PurchaseLog extends StatelessWidget {
+class PurchaseLog extends StatefulWidget {
+  PurchaseLog({Key? key}) : super(key: key);
+
+  @override
+  _PurchaseLogState createState() => _PurchaseLogState();
+}
+
+class _PurchaseLogState extends State<PurchaseLog> {
+  @override
+  void initState() {
+    super.initState();
+    Settings.themes.addListener(() {
+      setState(() {});
+    });
+  }
+
   /// Builds the root widget.
   ///
   /// @param context the current build context
@@ -25,15 +45,9 @@ class PurchaseLog extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Purchase Log',
-      theme: ThemeData(
-          primarySwatch: Colors.red,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          brightness: Brightness.light),
-      darkTheme: ThemeData(
-          primarySwatch: Colors.red,
-          visualDensity: VisualDensity.adaptivePlatformDensity,
-          brightness: Brightness.dark),
-      themeMode: ThemeMode.dark,
+      theme: Themes.light,
+      darkTheme: Themes.dark,
+      themeMode: Settings.themes.currentTheme(),
       home: HomePage(),
     );
   }

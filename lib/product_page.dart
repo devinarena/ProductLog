@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:barcode/barcode.dart';
 import 'package:barcode_widget/barcode_widget.dart';
@@ -9,6 +7,10 @@ import 'package:intl/intl.dart';
 import 'package:purchase_log/edit_product.dart';
 import 'package:purchase_log/product.dart';
 import 'package:purchase_log/products.dart';
+import 'package:purchase_log/settings.dart';
+import 'package:purchase_log/themes.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:checkdigit/checkdigit.dart';
 
 class ProductPage extends StatefulWidget {
   final Product _product;
@@ -20,15 +22,35 @@ class ProductPage extends StatefulWidget {
 }
 
 class _ProductPageState extends State<ProductPage> {
-  // use French locale number formatting for the group seperator to be a space
-  final format = new NumberFormat("0,00000,00000,0", "fr-FR");
+  late final String _fullName;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance!.addPostFrameCallback((_) {
+      if (!widget._product.hideUPC &&
+          !upcA.validate(widget._product.id.toString().padLeft(12, '0')))
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: AutoSizeText(
+            "UPC is not valid and cannot generate a barcode (to stop seeing this, check 'Hide UPC' under other info)",
+            maxLines: 3,
+            style: TextStyle(fontSize: 16, color: Colors.white),
+          ),
+          backgroundColor: Colors.grey[900],
+        ));
+    });
+    _fullName = (widget._product.manufacturer.isNotEmpty
+            ? widget._product.manufacturer + " "
+            : "") +
+        widget._product.name;
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[800],
+      backgroundColor: Themes.containerColor(),
       appBar: AppBar(
-        title: AutoSizeText("${widget._product.name}",
+        title: AutoSizeText("$_fullName",
             maxLines: 1, style: TextStyle(fontSize: 28)),
         centerTitle: true,
         actions: [
@@ -45,7 +67,7 @@ class _ProductPageState extends State<ProductPage> {
               icon: Icon(Icons.edit, color: Colors.white)),
           IconButton(
               onPressed: deletePrompt,
-              icon: Icon(Icons.delete, color: Colors.red)),
+              icon: Icon(Icons.delete, color: Themes.isDark() ? Colors.red : Colors.white)),
         ],
       ),
       body: SingleChildScrollView(
@@ -60,6 +82,9 @@ class _ProductPageState extends State<ProductPage> {
     );
   }
 
+  /// Builds the product's page based on what information is provided.
+  ///
+  /// @return List<Widget> the product page
   List<Widget> buildPage() {
     List<Widget> page = [];
     if (widget._product.image != null) {
@@ -68,21 +93,24 @@ class _ProductPageState extends State<ProductPage> {
           child: Container(
             child: Image.memory(widget._product.image!),
             decoration: BoxDecoration(
-                border: Border.all(width: 3, color: Colors.black)),
+                border: Border.all(
+                    width: 3,
+                    color: widget._product.favorite
+                        ? Color.fromRGBO(192, 0, 0, 1)
+                        : Colors.black)),
           )));
     }
     page.add(SizedBox(height: 20));
+    if (widget._product.manufacturer.isNotEmpty)
+      page.add(AutoSizeText("${widget._product.manufacturer}",
+          maxLines: 1,
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)));
     page.add(AutoSizeText("${widget._product.name}",
         maxLines: 2,
         style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)));
     page.add(SizedBox(height: 20));
     if (widget._product.description.isNotEmpty) {
       page.add(AutoSizeText("${widget._product.description}",
-          maxLines: null, style: TextStyle(fontSize: 20)));
-      page.add(SizedBox(height: 20));
-    }
-    if (widget._product.source.isNotEmpty) {
-      page.add(AutoSizeText("Source: ${widget._product.source}",
           maxLines: null, style: TextStyle(fontSize: 20)));
       page.add(SizedBox(height: 20));
     }
@@ -98,7 +126,37 @@ class _ProductPageState extends State<ProductPage> {
           style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)));
       page.add(SizedBox(height: 20));
     }
+    if (widget._product.purchaseDate != null) {
+      page.add(Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          AutoSizeText("First Purchase",
+              maxLines: 1,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          AutoSizeText(
+              DateFormat("MM/dd/yyyy").format(widget._product.purchaseDate!),
+              maxLines: 1,
+              style: TextStyle(fontSize: 20)),
+        ],
+      ));
+    }
+    if (widget._product.source.isNotEmpty) {
+      page.add(SizedBox(height: 20));
+      page.add(Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          AutoSizeText("Source",
+              maxLines: 1,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          AutoSizeText(widget._product.source,
+              maxLines: 1, style: TextStyle(fontSize: 20)),
+        ],
+      ));
+    }
     if (widget._product.quantity > 0) {
+      page.add(SizedBox(height: 20));
+      page.add(Divider(thickness: 1, height: 0, color: Colors.grey[600]));
+      page.add(SizedBox(height: 20));
       page.add(Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -118,7 +176,7 @@ class _ProductPageState extends State<ProductPage> {
           AutoSizeText("Price",
               maxLines: 1,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          AutoSizeText(widget._product.price.toString(),
+          AutoSizeText(Products.currencyFormat.format(widget._product.price),
               maxLines: 1, style: TextStyle(fontSize: 20)),
         ],
       ));
@@ -133,14 +191,12 @@ class _ProductPageState extends State<ProductPage> {
           AutoSizeText("Total",
               maxLines: 1,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          AutoSizeText(
-              (widget._product.quantity * widget._product.price).toString(),
-              maxLines: 1,
-              style: TextStyle(fontSize: 20)),
+          AutoSizeText(Products.currencyFormat.format(widget._product.price),
+              maxLines: 1, style: TextStyle(fontSize: 20)),
         ],
       ));
-      page.add(SizedBox(height: 10));
     }
+    page.add(SizedBox(height: 10));
     page.add(Divider(
         thickness: 3,
         height: 40,
@@ -152,10 +208,10 @@ class _ProductPageState extends State<ProductPage> {
         RichText(
           text: TextSpan(
             text: "${widget._product.rating}",
-            style: TextStyle(fontSize: 28, color: Colors.yellow[500]),
+            style: TextStyle(fontSize: 28, color: Themes.yellow()),
             children: [
               WidgetSpan(
-                  child: Icon(Icons.star, size: 36, color: Colors.yellow[300])),
+                  child: Icon(Icons.star, size: 36, color: Themes.yellow())),
             ],
           ),
         ),
@@ -203,6 +259,10 @@ class _ProductPageState extends State<ProductPage> {
       }
       page.add(SizedBox(height: 20));
     }
+    if (widget._product.hideUPC || Settings.collectionMode) return page;
+    if (!upcA.validate(widget._product.id.toString().padLeft(12, '0'))) {
+      return page;
+    }
     page.add(Divider(
         thickness: 3,
         height: 0,
@@ -217,7 +277,9 @@ class _ProductPageState extends State<ProductPage> {
         padding: EdgeInsets.all(10),
         margin: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(5)),
+            color: Colors.white,
+            border: Border.all(color: Colors.black, width: 2),
+            borderRadius: BorderRadius.circular(5)),
         child: BarcodeWidget(
           barcode: Barcode.upcA(),
           data: widget._product.id.toString().padLeft(12, '0'),
@@ -249,7 +311,7 @@ class _ProductPageState extends State<ProductPage> {
 
     AlertDialog dialog = AlertDialog(
       title: Text("Really delete?"),
-      content: Text("Are you sure you wish to delete ${widget._product.name}?"),
+      content: Text("Are you sure you wish to delete $_fullName?"),
       actions: [yesButton, noButton],
     );
 
@@ -275,8 +337,7 @@ class _ProductPageState extends State<ProductPage> {
     ElevatedButton yesButton = ElevatedButton(
         child: Text("Yes"),
         onPressed: () {
-          Products.deleteProduct(widget._product);
-          Navigator.popUntil(context, (route) => route.isFirst);
+          _openPage();
         });
 
     AlertDialog dialog = AlertDialog(
@@ -290,5 +351,25 @@ class _ProductPageState extends State<ProductPage> {
         builder: (BuildContext context) {
           return dialog;
         });
+  }
+
+  /// Opens the link associated with the product.
+  void _openPage() async {
+    String url = widget._product.siteLink;
+    if (url.contains("https://")) {
+      url = url.substring(8);
+    }
+    if (await canLaunch("https://$url")) {
+      await launch("https://$url");
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: AutoSizeText(
+          "$url is a bad link, cannot open.",
+          maxLines: 1,
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.grey[900],
+      ));
+    }
   }
 }

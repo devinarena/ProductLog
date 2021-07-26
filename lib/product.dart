@@ -10,6 +10,7 @@ class Product {
   int id;
   Uint8List? image;
   String name;
+  String manufacturer;
   String description;
   int quantity;
   double price;
@@ -17,6 +18,8 @@ class Product {
   String siteLink;
   double rating;
   bool favorite;
+  bool hideUPC;
+  DateTime? purchaseDate;
   String tags;
 
   /// Product constructor
@@ -28,6 +31,7 @@ class Product {
       {required this.id,
       this.image,
       this.name = "",
+      this.manufacturer = "",
       this.description = "",
       this.quantity = 0,
       this.price = 0.0,
@@ -35,12 +39,15 @@ class Product {
       this.rating = 0.0,
       this.siteLink = "",
       this.favorite = false,
+      this.hideUPC = false,
+      this.purchaseDate,
       this.tags = ""});
 
   @override
   String toString() {
     return "ID: $id\n" +
         "Name: $name\n" +
+        "Manufacturer: $manufacturer\n" +
         "Description: $description\n" +
         "Quantity: $quantity\n" +
         "Price: $price\n" +
@@ -48,6 +55,8 @@ class Product {
         "Rating: $rating\n" +
         "Site Link: $siteLink\n" +
         "Favorite: $favorite\n" +
+        "Hide UPC: $hideUPC\n" +
+        "Purchase Date: $purchaseDate\n" +
         "Tags: $tags\n" +
         "Image: $image\n";
   }
@@ -60,6 +69,7 @@ class Product {
     return {
       "ID": id,
       "NAME": name,
+      "MANUFACTURER": manufacturer,
       "DESCRIPTION": description,
       "QUANTITY": quantity,
       "PRICE": price,
@@ -67,7 +77,34 @@ class Product {
       "IMAGE": image == null ? null : base64Encode(image!),
       "RATING": rating,
       "SITELINK": siteLink,
-      "FAVORITE": favorite,
+      "FAVORITE": favorite ? 1 : 0,
+      "HIDE_UPC": hideUPC ? 1 : 0,
+      "PURCHASE_DATE":
+          purchaseDate != null ? purchaseDate!.toIso8601String() : null,
+      "TAGS": tags,
+    };
+  }
+
+  /// Serializes a product to be stored in the database WITHOUT its ID.
+  /// Allows for the database to automatically assign the product an ID.
+  /// Called when a user adds a product instead of using a UPC.
+  ///
+  /// @return Map<String, dynamic> list of fields as key, value pairs for a database
+  Map<String, dynamic> serializeWithoutID() {
+    return {
+      "NAME": name,
+      "MANUFACTURER": manufacturer,
+      "DESCRIPTION": description,
+      "QUANTITY": quantity,
+      "PRICE": price,
+      "SOURCE": source,
+      "IMAGE": image == null ? null : base64Encode(image!),
+      "RATING": rating,
+      "SITELINK": siteLink,
+      "FAVORITE": favorite ? 1 : 0,
+      "HIDE_UPC": hideUPC ? 1 : 0,
+      "PURCHASE_DATE":
+          purchaseDate != null ? purchaseDate!.toIso8601String() : null,
       "TAGS": tags,
     };
   }
@@ -80,6 +117,7 @@ class Product {
   static Product deserialize(Map<String, dynamic> row) {
     int id = row["ID"];
     String name = row["NAME"];
+    String manufacturer = row["MANUFACTURER"];
     String description = row["DESCRIPTION"];
     int quantity = row["QUANTITY"];
     double price = row["PRICE"];
@@ -88,12 +126,17 @@ class Product {
         row["IMAGE"] != null ? Base64Decoder().convert(row["IMAGE"]) : null;
     double rating = row["RATING"];
     String siteLink = row["SITELINK"];
-    bool favorite = row["FAVORITE"];
+    bool favorite = row["FAVORITE"] == 1;
+    bool hideUPC = row["HIDE_UPC"] == 1;
+    DateTime? purchaseDate = row["PURCHASE_DATE"] != null
+        ? DateTime.tryParse(row["PURCHASE_DATE"])
+        : null;
     String tags = row["TAGS"];
 
     return new Product(
         id: id,
         name: name,
+        manufacturer: manufacturer,
         description: description,
         image: image,
         quantity: quantity,
@@ -102,6 +145,8 @@ class Product {
         rating: rating,
         siteLink: siteLink,
         favorite: favorite,
+        hideUPC: hideUPC,
+        purchaseDate: purchaseDate,
         tags: tags);
   }
 }

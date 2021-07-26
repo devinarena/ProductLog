@@ -8,6 +8,7 @@
             "name": "purchase_log",
             "request": "launch",
             "type": "dart",
+            "args": []
         },
         {
             "name": "purchase_log (profile mode)",
