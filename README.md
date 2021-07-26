@@ -1,16 +1,25 @@
-# purchase_log
+# Purchase Log
 
-A new Flutter project.
+A cross platform mobile application written using the flutter SDK. Allows you to document and log purchases stored on a local SQLite database. Contains features allowing personalization and ease of use. 
 
-## Getting Started
+# Products
+Users can store product information to be recalled at any time. Users can scan barcodes, enter UPCs, or simply add products dynamically. Collection mode removes UPCs if desired. Stored product information can include ID, image, name, manufacturer, description, quantity, price, source, site link, rating, favorited, purchase date, and product tags. 
 
-This project is a starting point for a Flutter application.
+# Getting Started
 
-A few resources to get you started if this is your first Flutter project:
+This application is not yet on the Google Play store or iOS app store, though I plan to release it soon. It will stay open source even when it is published.
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+# Images
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+![Home Page](screenshots/home.png)
+
+![Log Page](screenshots/log.png)
+
+![Settings Page](screenshots/settings.png)
+
+![Product Page](screenshots/product.png)
+
+![Edit Page](screenshots/edit.png)
+
+# License
+Published under the MIT License.
