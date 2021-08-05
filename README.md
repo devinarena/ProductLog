@@ -11,15 +11,19 @@ This application is not yet on the Google Play store or iOS app store, though I 
 
 # Images
 
-![Home Page](screenshots/home.png)
+<div align="center">
 
-![Log Page](screenshots/log.png)
+  ![Home Page](screenshots/home.png)
 
-![Settings Page](screenshots/settings.png)
+  ![Log Page](screenshots/log.png)
 
-![Product Page](screenshots/product.png)
+  ![Settings Page](screenshots/settings.png)
 
-![Edit Page](screenshots/edit.png)
+  ![Product Page](screenshots/product.png)
+
+  ![Edit Page](screenshots/edit.png)
+
+ </div>
 
 # License
 Published under the MIT License.
