@@ -1,4 +1,4 @@
-# Purchase Log
+# Product Log
 
 A cross platform mobile application written using the flutter SDK. Allows you to document and log purchases stored on a local SQLite database. Contains features allowing personalization and ease of use. 
 
